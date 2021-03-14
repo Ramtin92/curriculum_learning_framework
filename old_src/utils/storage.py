@@ -4,7 +4,7 @@ import torch
 import logging
 import sys
 
-import utils
+from old_src import utils
 
 
 def create_folders_if_necessary(path):

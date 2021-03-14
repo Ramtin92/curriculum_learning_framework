@@ -1,6 +1,6 @@
 import gym
 from sklearn.cluster import KMeans
-from config import env_list
+from old_src.config import env_list
 import numpy as np
 
 pos_inf = float('inf')     # positive infinity

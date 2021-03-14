@@ -1,10 +1,8 @@
 import argparse
-import time
 import numpy
 import torch
 
-import utils
-
+from old_src import utils
 
 # Parse arguments
 

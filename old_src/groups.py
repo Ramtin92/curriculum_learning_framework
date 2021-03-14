@@ -1,10 +1,5 @@
-from sklearn.cluster import KMeans
-import numpy as np
-
-
 import gym
-from config import env_list
-from build_curriculum import *
+from old_src.build_curriculum import *
 
 env_dict = {}
 for idx, env_str in enumerate(env_list):

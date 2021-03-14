@@ -1,7 +1,7 @@
 import torch
 
-import utils
-from model import ACModel
+from old_src import utils
+from old_src.model import ACModel
 
 
 class Agent:
