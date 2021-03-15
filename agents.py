@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
+from torch.nn import  init
 
 
 class ActorCriticPolicy(nn.Module):
@@ -17,28 +18,38 @@ class ActorCriticPolicy(nn.Module):
                  epsilon, random_seed):
         super(ActorCriticPolicy, self).__init__()
         # store hyper-params
-        self._A = num_actions
-        self._D = input_size
-        self._H = hidden_layer_size
+        self.num_actions = num_actions
+        self.input_size = input_size
+        self.hidden_layer_size = hidden_layer_size
         self.gamma = gamma
         self.decay_rate = decay_rate #?
         self.learning_rate = learning_rate
         self.random_seed = random_seed #?
-        self.eps = epsilon
+        self.epsilon = epsilon
 
-        self.affine1 = nn.Linear(self._D, self._H)
+        self.affine1 = nn.Linear(self.input_size, self.hidden_layer_size)
 
         # actor's layer
-        self.action_head = nn.Linear(self._H, self._A)
+        self.action_head = nn.Linear(self.hidden_layer_size, self.num_actions)
 
         # critic's layer
-        self.value_head = nn.Linear(self._H, 1)
+        # self.value_head = nn.Linear(self.hidden_layer_size, 1)
+        self.value_head = nn.Sequential([nn.Linear(self.hidden_layer_size, self.hidden_layer_size//2),
+                                         nn.Tanh(),
+                                         nn.Linear(self.hidden_layer_size, 1)])
 
         # action & reward buffer
         self.saved_actions = []
         self.rewards = []
 
         self.optimizer = torch.optim.Adam(self.parameters(), self.learning_rate, weight_decay=1e-4)
+
+    def reinit(self):
+        for m in self.value_head.modules():
+            if isinstance(m, nn.Linear):
+                m.weight.data = init.xavier_uniform_(m.weight.data, gain=nn.init.calculate_gain('relu'))
+                if m.bias is not None:
+                    m.bias.data = init.constant_(m.bias.data, 0.0)
 
     def forward(self, x):
         """
@@ -94,7 +105,7 @@ class ActorCriticPolicy(nn.Module):
             returns.insert(0, R)
 
         returns = torch.tensor(returns)
-        returns = (returns - returns.mean()) / (returns.std() + self.eps) #? eps
+        returns = (returns - returns.mean()) / (returns.std() + self.epsilon) #? eps
 
         for (log_prob, value), R in zip(saved_actions, returns):
             advantage = R - value.item()
@@ -142,3 +153,15 @@ class ActorCriticPolicy(nn.Module):
 
     def reset(self):
         pass
+
+# if __name__ == '__main__':
+#     from torch.nn import init
+#
+#     s = nn.Sequential(nn.Linear(32, 32//2),
+#                       nn.Linear(32//2, 1))
+#
+#     for m in s.modules():
+#         if isinstance(m, nn.Linear):
+#             m.weight.data = init.xavier_uniform_(m.weight.data, gain=nn.init.calculate_gain('relu'))
+#             if m.bias is not None:
+#                 m.bias.data = init.constant_(m.bias.data, 0.0)
