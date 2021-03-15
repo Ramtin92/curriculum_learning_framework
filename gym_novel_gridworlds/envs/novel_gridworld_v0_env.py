@@ -1,6 +1,3 @@
-# Author: Gyan Tatiya
-# Email: Gyan.Tatiya@tufts.edu
-
 import math
 
 import numpy as np
@@ -20,16 +17,19 @@ class NovelGridworldV0Env(gym.Env):
         Navigation if goal_env = 0
         Breaking if goal_env = 1
         Crafting if goal_env = 2
+        Building if goal_env = 3
     State: lidar sensor (8 beams) + inventory_items_quantity
-    Action: {0: 'Forward', 1: 'Left', 2: 'Right', 3: 'Break', 4: 'Crafting'}
+    Action: {0: 'Forward', 1: 'Left', 2: 'Right', 3: 'Break', 4: 'Crafting', 5: 'Build'}
 
     """
 
-    def __init__(self, map_width=None, map_height=None, items_id=None, items_quantity=None, initial_inventory = None, goal_env = None, is_final = False):
+    def __init__(self, map_width=None, map_height=None, items_id=None, items_quantity=None, initial_inventory=None,
+                 no_fire=None, goal_env=None, is_final=False):
         # NovelGridworldV7Env attributes
         self.env_name = 'NovelGridworld-v0'
         self.map_width = 10
         self.map_height = 10
+        self.is_fire = no_fire
         self.map = np.zeros((self.map_width, self.map_height), dtype=int)  # 2D Map
         self.agent_location = (1, 1)  # row, column
         self.direction_id = {'NORTH': 0, 'SOUTH': 1, 'WEST': 2, 'EAST': 3}
@@ -38,10 +38,11 @@ class NovelGridworldV0Env(gym.Env):
         self.block_in_front_str = 'air'
         self.block_in_front_id = 0  # air
         self.block_in_front_location = (0, 0)  # row, column
-        self.items = ['wall', 'tree', 'rock', 'crafting_table', 'pogo_stick']
+        self.items = ['wall', 'tree', 'rock', 'fire', 'crafting_table', 'pogo_stick', 'tent', 'tent_area']
         self.items_id = self.set_items_id(self.items)  # {'crafting_table': 1, 'pogo_stick': 2, ...}  # air's ID is 0
         # items_quantity when the episode starts, do not include wall, quantity must be more than 0
-        self.items_quantity = {'tree': 5, 'rock': 2, 'crafting_table': 1, 'pogo_stick': 0}
+        self.items_quantity = {'tree': 5, 'rock': 2, 'fire': self.is_fire, 'crafting_table': 1, 'pogo_stick': 0,
+                               'tent': 0, 'tent_area': 1}
 
         self.inventory_items_quantity = {item: 0 for item in self.items}
         self.initial_inventory = {item: 0 for item in self.items}
@@ -50,7 +51,7 @@ class NovelGridworldV0Env(gym.Env):
         self.not_available_locations = []  # locations that have item placed or are above, below, left, right to an item
 
         # Action Space
-        self.action_str = {0: 'Forward', 1: 'Left', 2: 'Right', 3: 'Break', 4: 'Crafting'}
+        self.action_str = {0: 'Forward', 1: 'Left', 2: 'Right', 3: 'Break', 4: 'Crafting', 5: 'Building'}
         self.goal_env = 2
         self.action_space = spaces.Discrete(len(self.action_str))
         self.recipes = {}
@@ -58,9 +59,9 @@ class NovelGridworldV0Env(gym.Env):
         self.step_count = 0  # no. of steps taken
 
         # Observation Space
-        self.num_beams = 8
+        self.num_beams = 10
         self.max_beam_range = 40
-        self.items_lidar = ['wall', 'crafting_table', 'tree', 'rock']
+        self.items_lidar = ['wall', 'crafting_table', 'tree', 'rock', 'fire', 'tent_area']
         self.items_id_lidar = self.set_items_id(self.items_lidar)
         self.low = np.array([0] * (len(self.items_lidar) * self.num_beams) + [0] * len(self.inventory_items_quantity))
         self.high = np.array([self.max_beam_range] * (len(self.items_lidar) * self.num_beams) + [5] * len(
@@ -72,6 +73,7 @@ class NovelGridworldV0Env(gym.Env):
         self.last_done = False  # last done
         self.reward_done = 1000
         self.reward_break = 50
+        self.reward_craft = 50
         self.episode_timesteps = 250
 
         if map_width is not None:
@@ -87,24 +89,39 @@ class NovelGridworldV0Env(gym.Env):
         if initial_inventory is not None:
             self.initial_inventory = initial_inventory
         if is_final == True:
-            self.reward_break = +1
+            self.reward_break = 0
+            self.reward_craft = 0
+        if self.is_fire >= 1:
+            self.reward_hit_fire = -1000
+
+        self.assert_conditions()
+
+    def assert_conditions(self):
+
+        assert not self.initial_inventory['crafting_table'] > 0, "Crafting table cannot be in the inventory"
+        assert not self.initial_inventory['tent_area'] > 0, "Tent area cannot be in the inventory"
+        assert not self.items_quantity['pogo_stick'] > 0, "Pogo Stick exists only in inventory"
+        assert not self.items_quantity['tent'] > 0, "Tent exists only in inventory"
+
+        if self.goal_env == 2:
+            no_tree = self.initial_inventory['tree'] + self.items_quantity['tree']
+            no_rock = self.initial_inventory['rock'] + self.items_quantity['rock']
+            assert not no_tree < 2, "Cannot craft, increase number of trees!"
+            assert not no_rock < 1, "Cannot craft, increase number of rocks!"
+            assert not self.items_quantity['crafting_table'] == 0, "Cannot craft, insert crafting table!"
+
+        if self.goal_env == 3:
+            total_craftable_pogo_sticks = min((self.items_quantity['rock'] + self.initial_inventory['rock']),
+                                              ((self.initial_inventory['tree'] + self.items_quantity['tree']) // 2))
+            total_possible_pogo_sticks = self.initial_inventory['pogo_stick'] + total_craftable_pogo_sticks
+            assert not self.items_quantity['tent_area'] == 0, "Cannot build, insert tent area"
+            if self.initial_inventory['tent'] <= 0:
+                assert not total_possible_pogo_sticks < 2, "Cannot build Tent"
+            if total_craftable_pogo_sticks > 0 and self.initial_inventory['pogo_stick'] < 2 and self.initial_inventory[
+                'tent'] <= 0:
+                assert not self.items_quantity['crafting_table'] == 0, "Cannot build, insert crafting table!"
 
     def reset(self):
-
-        # if map_width is not None:
-        #     self.map_width = map_width
-        # if map_height is not None:
-        #     self.map_height = map_height
-        # if items_id is not None:
-        #     self.items_id = items_id
-        # if items_quantity is not None:
-        #     self.items_quantity = items_quantity
-        # if goal_env is not None:
-        #     self.goal_env = goal_env
-        # if initial_inventory is not None:
-        #     self.initial_inventory = initial_inventory
-        # if is_final is True:
-        #     self.reward_break = 0
 
         print("map width is: ", self.map_width)
         # Variables to reset for each reset:
@@ -188,10 +205,10 @@ class NovelGridworldV0Env(gym.Env):
         r, c = self.agent_location
         for angle in angles_list:
             x_ratio, y_ratio = np.round(np.cos(angle), 2), np.round((np.sin(angle)), 2)
-            beam_signal = np.zeros(len(self.items_id_lidar), dtype=int)#
+            beam_signal = np.zeros(len(self.items_id_lidar), dtype=int)  #
 
             # Keep sending longer beams until hit an object or wall
-            for beam_range in range(1, self.max_beam_range+1):
+            for beam_range in range(1, self.max_beam_range + 1):
                 r_obj = r + np.round(beam_range * x_ratio)
                 c_obj = c + np.round(beam_range * y_ratio)
                 obj_id_rc = self.map[int(r_obj)][int(c_obj)]
@@ -257,6 +274,30 @@ class NovelGridworldV0Env(gym.Env):
                 self.agent_location = (r, c - 1)
             elif self.agent_facing_str == 'EAST' and self.map[r][c + 1] == 0:
                 self.agent_location = (r, c + 1)
+            elif self.agent_facing_str == 'NORTH' and self.map[r - 1][c] == self.items_id['fire']:
+                done = True
+                reward = self.reward_hit_fire
+                observation = self.get_observation()
+                info = {}
+                return observation, reward, done, info
+            elif self.agent_facing_str == 'SOUTH' and self.map[r + 1][c] == self.items_id['fire']:
+                done = True
+                reward = self.reward_hit_fire
+                observation = self.get_observation()
+                info = {}
+                return observation, reward, done, info
+            elif self.agent_facing_str == 'WEST' and self.map[r][c - 1] == self.items_id['fire']:
+                done = True
+                reward = self.reward_hit_fire
+                observation = self.get_observation()
+                info = {}
+                return observation, reward, done, info
+            elif self.agent_facing_str == 'EAST' and self.map[r][c + 1] == self.items_id['fire']:
+                done = True
+                reward = self.reward_hit_fire
+                observation = self.get_observation()
+                info = {}
+                return observation, reward, done, info
         # Left
         elif action == 1:
             if self.agent_facing_str == 'NORTH':
@@ -284,32 +325,64 @@ class NovelGridworldV0Env(gym.Env):
             if self.block_in_front_str == 'tree' or self.block_in_front_str == 'rock':
                 block_r, block_c = self.block_in_front_location
                 self.map[block_r][block_c] = 0
-                if (self.block_in_front_str == 'tree' and self.inventory_items_quantity['tree'] <= 1) or (self.block_in_front_str == 'rock' and self.inventory_items_quantity['rock'] <= 0):
+                if (self.block_in_front_str == 'tree' and self.inventory_items_quantity['tree'] <= 4) or (
+                        self.block_in_front_str == 'rock' and self.inventory_items_quantity['rock'] <= 1):
                     reward = self.reward_break
                 else:
                     reward = 0
                 self.inventory_items_quantity[self.block_in_front_str] += 1
 
+        # Craft
         elif action == 4:
             self.update_block_in_front()
             if self.block_in_front_str == 'crafting_table':
                 if self.inventory_items_quantity['tree'] >= 2 and self.inventory_items_quantity['rock'] >= 1:
+                    self.inventory_items_quantity['tree'] -= 2
+                    self.inventory_items_quantity['rock'] -= 1
                     self.inventory_items_quantity['pogo_stick'] += 1
-                    done = True
+                    reward = self.reward_craft
+
+        # Craft
+        elif action == 5:
+            self.update_block_in_front()
+            if self.block_in_front_str == 'tent_area':
+                if self.inventory_items_quantity['pogo_stick'] >= 2:
+                    self.inventory_items_quantity['pogo_stick'] -= 2
+                    self.inventory_items_quantity['tent'] += 1
                     reward = self.reward_done
+                    done = True
 
         # Update after each step
         observation = self.get_observation()
         self.update_block_in_front()
 
-        if self.goal_env == 0: # If the goal is navigation
+        if self.goal_env == 0:  # If the goal is navigation
             if not self.block_in_front_id == 0 and not self.block_in_front_str == 'wall':
                 done = True
                 reward = self.reward_done
 
-        if self.goal_env == 1: # If the goal is breaking
-            if (self.inventory_items_quantity['tree'] == self.initial_inventory['tree'] + self.items_quantity['tree'] or self.inventory_items_quantity['tree'] >= 2) \
-            and (self.inventory_items_quantity['rock'] == self.initial_inventory['rock'] + self.items_quantity['rock'] or self.inventory_items_quantity['rock'] >= 1):
+        if self.goal_env == 1:  # If the goal is breaking
+            if (self.inventory_items_quantity['tree'] == self.initial_inventory['tree'] + self.items_quantity['tree'] or
+                self.inventory_items_quantity['tree'] >= 2) \
+                    and (self.inventory_items_quantity['rock'] == self.initial_inventory['rock'] + self.items_quantity[
+                'rock'] or self.inventory_items_quantity['rock'] >= 1):
+                reward = self.reward_done
+                done = True
+
+        if self.goal_env == 2:  # If the goal is crafting
+            if (self.inventory_items_quantity['tree'] >= 2 and self.inventory_items_quantity['tree'] < 3 and
+                self.inventory_items_quantity['rock'] > 0) or \
+                    (self.inventory_items_quantity['tree'] >= 2 and self.inventory_items_quantity['rock'] == 1):
+                if self.inventory_items_quantity['pogo_stick'] == self.initial_inventory['pogo_stick'] + 1:
+                    reward = self.reward_done
+                    done = True
+            elif (self.inventory_items_quantity['tree'] >= 4 and self.inventory_items_quantity['rock'] > 1):
+                if self.inventory_items_quantity['pogo_stick'] == self.initial_inventory['pogo_stick'] + 2:
+                    reward = self.reward_done
+                    done = True
+
+        if self.goal_env == 3:
+            if self.inventory_items_quantity['tent'] == 1 or self.initial_inventory['tent'] == 1:
                 reward = self.reward_done
                 done = True
 
@@ -377,7 +450,7 @@ class NovelGridworldV0Env(gym.Env):
         # plt.grid()
 
         info = '\n'.join(["               Info:             ",
-                          "Env: "+self.env_name,
+                          "Env: " + self.env_name,
                           "Steps: " + str(self.step_count),
                           "Agent Facing: " + self.agent_facing_str,
                           "Action: " + self.action_str[self.last_action],
@@ -389,7 +462,7 @@ class NovelGridworldV0Env(gym.Env):
         # plt.text(-(self.map_size // 2) - 0.5, 2.25, info, fontsize=10, bbox=props)  # x, y
 
         if self.last_done:
-            you_win = "YOU WIN "+self.env_name+"!!!"
+            you_win = "YOU WIN " + self.env_name + "!!!"
             props = dict(boxstyle='round', facecolor='w', alpha=1)
             # plt.text(0 - 0.1, (self.map_size // 2), you_win, fontsize=18, bbox=props)
             plt.text(0 - 0.1, (self.map_width // 2), you_win, fontsize=18, bbox=props)

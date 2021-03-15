@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 
+
 class ActorCriticPolicy(nn.Module):
     """
     implements both actor and critic in one model
@@ -37,6 +38,8 @@ class ActorCriticPolicy(nn.Module):
         self.saved_actions = []
         self.rewards = []
 
+        self.optimizer = torch.optim.Adam(self.parameters(), self.learning_rate, weight_decay=1e-4)
+
     def forward(self, x):
         """
         forward of both actor and critic
@@ -57,7 +60,7 @@ class ActorCriticPolicy(nn.Module):
 
     def select_action(self, state):
         state = torch.from_numpy(state).float()
-        probs, state_value = self(state)
+        probs, state_value = self.forward(state)
 
         # create a categorical distribution over the list of probabilities of actions
         m = Categorical(probs)
@@ -102,8 +105,6 @@ class ActorCriticPolicy(nn.Module):
             # calculate critic (value) loss using L1 smooth loss
             value_losses.append(F.smooth_l1_loss(value, torch.tensor([R])))
 
-        self.optimizer = torch.optim.Adam(self.parameters(), self.learning_rate, weight_decay=1e-4) #self.net
-
         # reset gradients
         self.optimizer.zero_grad()
 
@@ -117,6 +118,7 @@ class ActorCriticPolicy(nn.Module):
         # reset rewards and action buffer
         del self.rewards[:]
         del self.saved_actions[:]
+
 
     def load_model(self, curriculum_no, beam_no, env_no):#
         experiment_file_name = '_c' + str(curriculum_no) + '_b' + str(beam_no) + '_e' + str(env_no)
@@ -137,3 +139,6 @@ class ActorCriticPolicy(nn.Module):
         # print("saved to: ", path_to_save)
         """
         torch.save(self.state_dict(), experiment_file_name)
+
+    def reset(self):
+        pass

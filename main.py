@@ -56,12 +56,10 @@ def train(args, env, agent): # fill in more args if it's needed
         if time_step > args.time_limit or done == True:
 
             # finish agent
-            if done:
-                done_arr.append(1)
-                curr_task_completion_array.append(1)
-            elif time_step > args.time_limit:
-                done_arr.append(0)
-                curr_task_completion_array.append(0)
+
+            done_arr.append(done)
+            curr_task_completion_array.append(done)
+
 
             print("\n\nfinished episode = " + str(episode) + " with " + str(reward_sum) + "\n")
 
@@ -82,7 +80,8 @@ def train(args, env, agent): # fill in more args if it's needed
             reward_sum = 0
 
             env_flag = 0
-            if i < 3:
+
+            if env.is_final:
                 env_flag = CheckTrainingDoneCallback(reward_arr, done_arr, i)
 
             # quit after some number of episodes
@@ -97,15 +96,16 @@ def train(args, env, agent): # fill in more args if it's needed
 def main(args):
     envs = get_envs()
     results = []
+    agent = ActorCriticPolicy(args.num_actions,
+                              args.input_size,
+                              args.hidden_size,
+                              args.learning_rate,
+                              args.gamma,
+                              args.decay_rate,
+                              args.max_epsilon,
+                              args.seed)
     for env in envs:
-        agent = ActorCriticPolicy(args.num_actions,
-                                  args.input_size,
-                                  args.hidden_size,
-                                  args.learning_rate,
-                                  args.gamma,
-                                  args.decay_rate,
-                                  args.max_epsilon,
-                                  args.seed)
+        agent.reset()
         result = train(args, env, agent)
         results.append(result)
 
