@@ -93,10 +93,12 @@ def main(args):
                               args.decay_rate,
                               args.epsilon,
                               args.seed)
+
     for index_env, env in enumerate(envs):
         agent.reset()
         if index_env > 0:
             agent.load_model(0, 0, index_env-1)
+            agent.reinit()
 
         result = train(args, env, agent, index_env)
         results.append(result)

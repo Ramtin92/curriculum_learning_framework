@@ -34,15 +34,15 @@ class ActorCriticPolicy(nn.Module):
         # actor's layer
         #self.action_head = nn.Linear(self.hidden_layer_size, self.num_actions)
 
-        self.action_head = nn.Sequential([nn.Linear(self.hidden_layer_size, self.hidden_layer_size // 2),
+        self.action_head = nn.Sequential(nn.Linear(self.hidden_layer_size, self.hidden_layer_size // 2),
                                          nn.Tanh(),
-                                         nn.Linear(self.hidden_layer_size // 2, self.num_actions)])
+                                         nn.Linear(self.hidden_layer_size // 2, self.num_actions))
 
         # critic's layer
         # self.value_head = nn.Linear(self.hidden_layer_size, 1)
-        self.value_head = nn.Sequential([nn.Linear(self.hidden_layer_size, self.hidden_layer_size//2),
+        self.value_head = nn.Sequential(nn.Linear(self.hidden_layer_size, self.hidden_layer_size//2),
                                          nn.Tanh(),
-                                         nn.Linear(self.hidden_layer_size // 2, 1)])
+                                         nn.Linear(self.hidden_layer_size // 2, 1))
 
         # action & reward buffer
         self.saved_actions = []
@@ -81,6 +81,8 @@ class ActorCriticPolicy(nn.Module):
     def select_action(self, state):
         state = torch.from_numpy(state).float()
         probs, state_value = self.forward(state)
+
+        print(probs)
 
         # create a categorical distribution over the list of probabilities of actions
         m = Categorical(probs)
@@ -161,7 +163,7 @@ class ActorCriticPolicy(nn.Module):
         torch.save(self.state_dict(), experiment_file_name)
 
     def reset(self):
-        pass
+        self.optimizer.zero_grad()
 
 # if __name__ == '__main__':
 #     from torch.nn import init
