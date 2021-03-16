@@ -27,7 +27,7 @@ class ActorCriticPolicy(nn.Module):
         self.decay_rate = decay_rate
         self.learning_rate = learning_rate
         self.random_seed = random_seed #??
-        self.epsilon = epsilon #??
+        self.epsilon = epsilon
 
         self.affine = nn.Linear(self.input_size, self.hidden_layer_size)
 
@@ -48,7 +48,8 @@ class ActorCriticPolicy(nn.Module):
         self.saved_actions = []
         self.rewards = []
 
-        self.optimizer = torch.optim.Adam(self.parameters(), self.learning_rate, weight_decay=self.decay_rate) #
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate,
+                                          weight_decay=self.decay_rate, eps=self.epsilon)
 
     def reinit(self):
         for m in self.value_head.modules():
