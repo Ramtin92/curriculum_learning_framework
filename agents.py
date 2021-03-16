@@ -7,7 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
-from torch.nn import  init
+from torch.nn import init
+
+eps = np.finfo(np.float32).eps.item()
 
 
 class ActorCriticPolicy(nn.Module):
@@ -22,27 +24,31 @@ class ActorCriticPolicy(nn.Module):
         self.input_size = input_size
         self.hidden_layer_size = hidden_layer_size
         self.gamma = gamma
-        self.decay_rate = decay_rate #?
+        self.decay_rate = decay_rate
         self.learning_rate = learning_rate
-        self.random_seed = random_seed #?
-        self.epsilon = epsilon
+        self.random_seed = random_seed #??
+        self.epsilon = epsilon #??
 
-        self.affine1 = nn.Linear(self.input_size, self.hidden_layer_size)
+        self.affine = nn.Linear(self.input_size, self.hidden_layer_size)
 
         # actor's layer
-        self.action_head = nn.Linear(self.hidden_layer_size, self.num_actions)
+        #self.action_head = nn.Linear(self.hidden_layer_size, self.num_actions)
+
+        self.action_head = nn.Sequential([nn.Linear(self.hidden_layer_size, self.hidden_layer_size // 2),
+                                         nn.Tanh(),
+                                         nn.Linear(self.hidden_layer_size // 2, self.num_actions)])
 
         # critic's layer
         # self.value_head = nn.Linear(self.hidden_layer_size, 1)
         self.value_head = nn.Sequential([nn.Linear(self.hidden_layer_size, self.hidden_layer_size//2),
                                          nn.Tanh(),
-                                         nn.Linear(self.hidden_layer_size, 1)])
+                                         nn.Linear(self.hidden_layer_size // 2, 1)])
 
         # action & reward buffer
         self.saved_actions = []
         self.rewards = []
 
-        self.optimizer = torch.optim.Adam(self.parameters(), self.learning_rate, weight_decay=1e-4)
+        self.optimizer = torch.optim.Adam(self.parameters(), self.learning_rate, weight_decay=self.decay_rate) #
 
     def reinit(self):
         for m in self.value_head.modules():
@@ -55,13 +61,15 @@ class ActorCriticPolicy(nn.Module):
         """
         forward of both actor and critic
         """
-        x = F.relu(self.affine1(x))
+        enc0 = F.relu(self.affine(x))
 
         # actor: chooses action to take from state s_t
-        action_prob = F.softmax(self.action_head(x), dim=-1)
+        # action_prob = F.softmax(self.action_head(x), dim=-1)
+        action_prob = F.softmax(self.action_head(enc0), dim=-1)
 
         # critic: evaluates being in the state s_t
-        state_values = self.value_head(x)
+        # state_values = self.value_head(x)
+        state_values = self.value_head(enc0)
 
         # return values for both actor and critic as a tuple of 2 values:
         # 1. a list with the probability of each action over the action space
@@ -80,7 +88,7 @@ class ActorCriticPolicy(nn.Module):
         action = m.sample()
 
         # save to action buffer
-        self.saved_actions.append(SavedAction(m.log_prob(action), state_value))
+        self.saved_actions.append((m.log_prob(action), state_value))
 
         # the action to take (left or right)
         return action.item()
@@ -92,7 +100,7 @@ class ActorCriticPolicy(nn.Module):
         """
         Training code. Calculates actor and critic loss and performs back propagation.
         """
-        R = 0
+        the_reward = 0
         saved_actions = self.saved_actions
         policy_losses = [] # save actor (policy) loss
         value_losses = [] # save critic (value) loss
@@ -101,20 +109,20 @@ class ActorCriticPolicy(nn.Module):
         # calculate the true value using rewards returned from the environment
         for r in self.rewards[::-1]:
             # calculate the discounted value
-            R = r + self.gamma * R
-            returns.insert(0, R)
+            the_reward = r + self.gamma * the_reward
+            returns.insert(0, the_reward)
 
         returns = torch.tensor(returns)
-        returns = (returns - returns.mean()) / (returns.std() + self.epsilon) #? eps
+        returns = (returns - returns.mean()) / (returns.std() + eps)
 
-        for (log_prob, value), R in zip(saved_actions, returns):
-            advantage = R - value.item()
+        for (log_prob, value), the_reward in zip(saved_actions, returns):
+            advantage = the_reward - value.item()
 
             # calculate actor (policy) loss
             policy_losses.append(-log_prob * advantage)
 
             # calculate critic (value) loss using L1 smooth loss
-            value_losses.append(F.smooth_l1_loss(value, torch.tensor([R])))
+            value_losses.append(F.smooth_l1_loss(value, torch.tensor([the_reward])))
 
         # reset gradients
         self.optimizer.zero_grad()
@@ -131,7 +139,7 @@ class ActorCriticPolicy(nn.Module):
         del self.saved_actions[:]
 
 
-    def load_model(self, curriculum_no, beam_no, env_no):#
+    def load_model(self, curriculum_no, beam_no, env_no):
         experiment_file_name = '_c' + str(curriculum_no) + '_b' + str(beam_no) + '_e' + str(env_no)
         """
         # path_to_load = self.log_dir + os.sep + self.env_id + experiment_file_name + '.npz'
@@ -142,7 +150,7 @@ class ActorCriticPolicy(nn.Module):
         self.load_state_dict(torch.load(experiment_file_name))
 
 
-    def save_model(self, curriculum_no, beam_no, env_no):#
+    def save_model(self, curriculum_no, beam_no, env_no):
         experiment_file_name = '_c' + str(curriculum_no) + '_b' + str(beam_no) + '_e' + str(env_no)
         """
         # path_to_save = self.log_dir + os.sep + self.env_id + experiment_file_name + '.npz'
