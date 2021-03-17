@@ -32,16 +32,18 @@ class ActorCriticPolicy(nn.Module):
         self.affine = nn.Linear(self.input_size, self.hidden_layer_size)
 
         # actor's layer
-        #self.action_head = nn.Linear(self.hidden_layer_size, self.num_actions)
+        # self.action_head = nn.Linear(self.hidden_layer_size, self.num_actions)
 
         self.action_head = nn.Sequential(nn.Linear(self.hidden_layer_size, self.hidden_layer_size // 2),
                                          nn.Tanh(),
+                                         nn.LayerNorm(self.hidden_layer_size // 2),
                                          nn.Linear(self.hidden_layer_size // 2, self.num_actions))
 
         # critic's layer
         # self.value_head = nn.Linear(self.hidden_layer_size, 1)
         self.value_head = nn.Sequential(nn.Linear(self.hidden_layer_size, self.hidden_layer_size//2),
                                          nn.Tanh(),
+                                         nn.LayerNorm(self.hidden_layer_size // 2),
                                          nn.Linear(self.hidden_layer_size // 2, 1))
 
         # action & reward buffer
@@ -51,8 +53,8 @@ class ActorCriticPolicy(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate,
                                           weight_decay=self.decay_rate, eps=self.epsilon)
 
-    def reinit(self):
-        for m in self.value_head.modules():
+    def reinit(self): # critic should be saved. actor is random
+        for m in self.action_head.modules():
             if isinstance(m, nn.Linear):
                 m.weight.data = init.xavier_uniform_(m.weight.data, gain=nn.init.calculate_gain('relu'))
                 if m.bias is not None:

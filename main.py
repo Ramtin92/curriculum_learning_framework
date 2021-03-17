@@ -24,7 +24,7 @@ def check_training_done_callback(reward_array, done_array):
         return 0
 
 
-def train(args, env, agent, index_env):  # fill in more args if it's needed
+def train(args, env, agent, index_env, is_final_env):  # fill in more args if it's needed
     env.reset()
     episode = 0
     time_step = 0
@@ -60,7 +60,6 @@ def train(args, env, agent, index_env):  # fill in more args if it's needed
             avg_reward.append(np.mean(reward_arr[-40:]))
 
             done = 1
-            time_step = 0
             agent.finish_episode()
 
             episode += 1
@@ -70,7 +69,7 @@ def train(args, env, agent, index_env):  # fill in more args if it's needed
 
             env_flag = 0
 
-            if not env.is_final:
+            if is_final_env:
                 env_flag = check_training_done_callback(reward_arr, done_arr)
 
             # quit after some number of episodes
@@ -79,7 +78,8 @@ def train(args, env, agent, index_env):  # fill in more args if it's needed
                 # total_episodes_arr.append(episode)
                 break
 
-    return None  # TODO: return training history to the main function, better be a dictionary
+    return reward_arr, avg_reward, time_step
+#return reward, time step, what task?
 
 
 def main(args):
@@ -94,13 +94,17 @@ def main(args):
                               args.epsilon,
                               args.seed)
 
+    is_final_env = 0
     for index_env, env in enumerate(envs):
         agent.reset()
         if index_env > 0:
             agent.load_model(0, 0, index_env-1)
             agent.reinit()
 
-        result = train(args, env, agent, index_env)
+        if index_env == len(envs) - 1:
+            is_final_env = 1
+
+        result = train(args, env, agent, index_env, is_final_env)
         results.append(result)
 
     # TODO write and save
