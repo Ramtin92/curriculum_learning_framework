@@ -8,11 +8,11 @@ def set_parameters_for_model():
     no_of_environmets = 4
     width_array = [11, 8, 11, 11]
     height_array = [11, 8, 11, 11]
-    no_trees_array = [0, 1, 3, 4]
-    no_rocks_array = [0, 1, 2, 2]
+    no_trees_array = [3, 1, 3, 4]
+    no_rocks_array = [4, 1, 2, 2]
     no_table_array = [1, 0, 1, 1]
     no_fires_array = [1, 0, 3, 1]
-    tents_area = [1, 1, 1, 1]  # [1, 0, 1, 1]
+    tents_area = [1, 1, 1, 1]
     starting_trees_array = [0, 0, 0, 0]
     starting_rocks_array = [0, 0, 0, 0]
     starting_pogo_sticks_array = [1, 0, 0, 0]
@@ -35,7 +35,7 @@ def get_envs():
                                        'pogo_stick': 0, 'tent': 0, 'tent_area': a_tent_area},
                        initial_inventory={'wall': 0, 'tree': start_tree, 'rock': start_rock, 'fire': 0,
                                           'crafting_table': 0, 'pogo_stick': start_pogo_sticks,
-                                          'tent': 1, 'tent_area': 0}, #' tent': 0 raises exception?
+                                          'tent': 0, 'tent_area': 0}, #' tent': 0 raises exception?
                        no_fire=no_fire,
                        goal_env=type_of_env,
                        is_final=i_env == (no_of_environmets - 1))

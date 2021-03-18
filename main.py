@@ -63,6 +63,7 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
             agent.finish_episode()
 
             episode += 1
+            time_step = 0
 
             env.reset()
             reward_sum = 0
@@ -78,8 +79,7 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
                 # total_episodes_arr.append(episode)
                 break
 
-    return reward_arr, avg_reward, time_step
-#return reward, time step, what task?
+    return reward_arr, avg_reward, time_step, index_env
 
 
 def main(args):

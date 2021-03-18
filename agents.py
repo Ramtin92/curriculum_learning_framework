@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
+import random
 from torch.nn import init
 
 eps = np.finfo(np.float32).eps.item()
@@ -26,8 +27,8 @@ class ActorCriticPolicy(nn.Module):
         self.gamma = gamma
         self.decay_rate = decay_rate
         self.learning_rate = learning_rate
-        self.random_seed = random_seed #??
-        self.epsilon = epsilon
+        self.random_seed = random_seed #?
+        self.epsilon = epsilon #?
 
         self.affine = nn.Linear(self.input_size, self.hidden_layer_size)
 
@@ -36,14 +37,12 @@ class ActorCriticPolicy(nn.Module):
 
         self.action_head = nn.Sequential(nn.Linear(self.hidden_layer_size, self.hidden_layer_size // 2),
                                          nn.Tanh(),
-                                         nn.LayerNorm(self.hidden_layer_size // 2),
                                          nn.Linear(self.hidden_layer_size // 2, self.num_actions))
 
         # critic's layer
         # self.value_head = nn.Linear(self.hidden_layer_size, 1)
         self.value_head = nn.Sequential(nn.Linear(self.hidden_layer_size, self.hidden_layer_size//2),
                                          nn.Tanh(),
-                                         nn.LayerNorm(self.hidden_layer_size // 2),
                                          nn.Linear(self.hidden_layer_size // 2, 1))
 
         # action & reward buffer
@@ -51,7 +50,8 @@ class ActorCriticPolicy(nn.Module):
         self.rewards = []
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate,
-                                          weight_decay=self.decay_rate, eps=self.epsilon)
+                                          weight_decay=self.decay_rate)
+
 
     def reinit(self): # critic should be saved. actor is random
         for m in self.action_head.modules():
@@ -79,23 +79,19 @@ class ActorCriticPolicy(nn.Module):
         # 2. the value from state s_t
         return action_prob, state_values
 
-
     def select_action(self, state):
         state = torch.from_numpy(state).float()
         probs, state_value = self.forward(state)
 
-        print(probs)
-
         # create a categorical distribution over the list of probabilities of actions
         m = Categorical(probs)
-
         # and sample an action using the distribution
         action = m.sample()
 
         # save to action buffer
         self.saved_actions.append((m.log_prob(action), state_value))
 
-        # the action to take (left or right)
+        # the action to take
         return action.item()
 
     def set_rewards(self, reward):
@@ -105,7 +101,7 @@ class ActorCriticPolicy(nn.Module):
         """
         Training code. Calculates actor and critic loss and performs back propagation.
         """
-        the_reward = 0
+        the_reward = 0.0
         saved_actions = self.saved_actions
         policy_losses = [] # save actor (policy) loss
         value_losses = [] # save critic (value) loss
@@ -167,14 +163,17 @@ class ActorCriticPolicy(nn.Module):
     def reset(self):
         self.optimizer.zero_grad()
 
-# if __name__ == '__main__':
-#     from torch.nn import init
-#
-#     s = nn.Sequential(nn.Linear(32, 32//2),
-#                       nn.Linear(32//2, 1))
-#
-#     for m in s.modules():
-#         if isinstance(m, nn.Linear):
-#             m.weight.data = init.xavier_uniform_(m.weight.data, gain=nn.init.calculate_gain('relu'))
-#             if m.bias is not None:
-#                 m.bias.data = init.constant_(m.bias.data, 0.0)
+if __name__ == '__main__':
+    from torch.nn import init
+
+    # s = nn.Sequential(nn.Linear(32, 32//2),
+    #                   nn.Linear(32//2, 1))
+    #
+    # for m in s.modules():
+    #     if isinstance(m, nn.Linear):
+    #         m.weight.data = init.xavier_uniform_(m.weight.data, gain=nn.init.calculate_gain('relu'))
+    #         if m.bias is not None:
+    #             m.bias.data = init.constant_(m.bias.data, 0.0)
+
+
+
