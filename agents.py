@@ -86,7 +86,6 @@ class ActorCriticPolicy(nn.Module):
         # epsilon greedy
         if random.uniform(0, 1) < self.epsilon:
             probs = torch.from_numpy(np.array([1/probs.shape[0] for _ in range(probs.shape[0])])).float()
-            print(probs)
 
         # create a categorical distribution over the list of probabilities of actions
         m = Categorical(probs)
@@ -95,8 +94,6 @@ class ActorCriticPolicy(nn.Module):
 
         # save to action buffer
         self.saved_actions.append((m.log_prob(action), state_value))
-
-
 
         # the action to take
         return action.item()
@@ -168,7 +165,10 @@ class ActorCriticPolicy(nn.Module):
         torch.save(self.state_dict(), experiment_file_name)
 
     def reset(self):
-        self.optimizer.zero_grad()
+        # self.optimizer.zero_grad()
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate,
+                                          weight_decay=self.decay_rate)
+
 
 if __name__ == '__main__':
     from torch.nn import init
