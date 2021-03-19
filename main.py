@@ -2,6 +2,8 @@ import numpy as np
 from enviroments import get_envs
 from agents import ActorCriticPolicy
 from args import Args
+import random
+import time
 
 
 def check_training_done_callback(reward_array, done_array):
@@ -34,6 +36,9 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
     reward_arr = []
     avg_reward = []
     while True:
+
+        env.render()
+        time.sleep(.1)
         obs = env.get_observation()
         a = agent.select_action(obs)
 
@@ -83,6 +88,7 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
 
 
 def main(args):
+    random.seed(args.seed)
     envs = get_envs()
     results = []
     agent = ActorCriticPolicy(args.num_actions,
@@ -91,8 +97,7 @@ def main(args):
                               args.learning_rate,
                               args.gamma,
                               args.decay_rate,
-                              args.epsilon,
-                              args.seed)
+                              args.epsilon)
 
     is_final_env = 0
     for index_env, env in enumerate(envs):

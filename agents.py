@@ -18,7 +18,7 @@ class ActorCriticPolicy(nn.Module):
     implements both actor and critic in one model
     """
     def __init__(self, num_actions, input_size, hidden_layer_size, learning_rate, gamma, decay_rate,
-                 epsilon, random_seed):
+                 epsilon):
         super(ActorCriticPolicy, self).__init__()
         # store hyper-params
         self.num_actions = num_actions
@@ -27,8 +27,8 @@ class ActorCriticPolicy(nn.Module):
         self.gamma = gamma
         self.decay_rate = decay_rate
         self.learning_rate = learning_rate
-        self.random_seed = random_seed #?
-        self.epsilon = epsilon #?
+        self.epsilon = epsilon
+
 
         self.affine = nn.Linear(self.input_size, self.hidden_layer_size)
 
@@ -83,6 +83,11 @@ class ActorCriticPolicy(nn.Module):
         state = torch.from_numpy(state).float()
         probs, state_value = self.forward(state)
 
+        # epsilon greedy
+        if random.uniform(0, 1) < self.epsilon:
+            probs = torch.from_numpy(np.array([1/probs.shape[0] for _ in range(probs.shape[0])])).float()
+            print(probs)
+
         # create a categorical distribution over the list of probabilities of actions
         m = Categorical(probs)
         # and sample an action using the distribution
@@ -90,6 +95,8 @@ class ActorCriticPolicy(nn.Module):
 
         # save to action buffer
         self.saved_actions.append((m.log_prob(action), state_value))
+
+
 
         # the action to take
         return action.item()

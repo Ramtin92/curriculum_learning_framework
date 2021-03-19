@@ -35,7 +35,7 @@ def get_envs():
                                        'pogo_stick': 0, 'tent': 0, 'tent_area': a_tent_area},
                        initial_inventory={'wall': 0, 'tree': start_tree, 'rock': start_rock, 'fire': 0,
                                           'crafting_table': 0, 'pogo_stick': start_pogo_sticks,
-                                          'tent': 0, 'tent_area': 0}, #' tent': 0 raises exception?
+                                          'tent': 0, 'tent_area': 0},
                        no_fire=no_fire,
                        goal_env=type_of_env,
                        is_final=i_env == (no_of_environmets - 1))
