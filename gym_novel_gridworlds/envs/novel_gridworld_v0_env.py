@@ -29,7 +29,7 @@ class NovelGridworldV0Env(gym.Env):
         self.env_name = 'NovelGridworld-v0'
         self.map_width = 10
         self.map_height = 10
-        self.is_fire = no_fire
+        self.is_fire = items_quantity['fire']
         self.map = np.zeros((self.map_width, self.map_height), dtype=int)  # 2D Map
         self.agent_location = (1, 1)  # row, column
         self.direction_id = {'NORTH': 0, 'SOUTH': 1, 'WEST': 2, 'EAST': 3}
@@ -123,7 +123,7 @@ class NovelGridworldV0Env(gym.Env):
 
     def reset(self):
 
-        print("map width is: ", self.map_width)
+        # print("map width is: ", self.map_width)
         # Variables to reset for each reset:
         self.inventory_items_quantity = {item: self.initial_inventory[item] for item in self.items}
         self.available_locations = []

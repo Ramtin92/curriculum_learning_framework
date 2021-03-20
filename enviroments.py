@@ -5,18 +5,18 @@ import gym
 def set_parameters_for_model():
     global no_of_environmets, width_array, height_array, no_trees_array, no_rocks_array, no_table_array, no_fires_array,\
         tents_area, starting_trees_array, starting_rocks_array, starting_pogo_sticks_array, type_of_env_array, env_id
-    no_of_environmets = 4
-    width_array = [11, 8, 11, 11]
-    height_array = [11, 8, 11, 11]
-    no_trees_array = [3, 1, 3, 4]
-    no_rocks_array = [4, 1, 2, 2]
-    no_table_array = [1, 0, 1, 1]
-    no_fires_array = [1, 0, 3, 1]
-    tents_area = [1, 1, 1, 1]
-    starting_trees_array = [0, 0, 0, 0]
-    starting_rocks_array = [0, 0, 0, 0]
-    starting_pogo_sticks_array = [1, 0, 0, 0]
-    type_of_env_array = [3, 1, 2, 2]
+    no_of_environmets = 6
+    width_array = [6, 8, 9, 10, 12, 13]
+    height_array = [6, 8, 9, 10, 12, 13]
+    no_trees_array = [1, 1, 3, 3, 4, 4]
+    no_rocks_array = [0, 1, 2, 2, 2, 2]
+    no_table_array = [0, 0, 1, 1, 1, 1]
+    no_fires_array = [0, 0, 0, 1, 2, 3]
+    tents_area = [0, 0, 0, 0, 1, 1]
+    starting_trees_array = [0, 0, 0, 1, 0, 0]
+    starting_rocks_array = [0, 0, 0, 0, 0, 0]
+    starting_pogo_sticks_array = [0, 0, 0, 0, 0, 0]
+    type_of_env_array = [0, 1, 2, 2, 3, 3]
     env_id = "NovelGridworld-v0"
 
 

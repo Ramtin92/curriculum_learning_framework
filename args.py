@@ -17,7 +17,7 @@ class Args:
         # agent
         self.parser.add_argument('--num_actions', type=int, default=6, help='num_actions')
         self.parser.add_argument('--input_size', type=int, default=68, help='input_size')
-        self.parser.add_argument('--hidden_size', type=int, default=10, help='hidden_size')
+        self.parser.add_argument('--hidden_size', type=int, default=16, help='hidden_size')
         self.parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning_rate')
         self.parser.add_argument('--gamma', type=float, default=0.995, help='discount factor (default: 0.995)')
         self.parser.add_argument('--decay_rate', type=float, default=0.99, help='decay_rate')

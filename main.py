@@ -1,5 +1,6 @@
 import numpy as np
 from enviroments import get_envs
+import os
 from agents import ActorCriticPolicy
 from args import Args
 import random
@@ -35,10 +36,12 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
     curr_task_completion_array = []
     reward_arr = []
     avg_reward = []
+    timestep_arr = []
+    episode_arr = []
     while True:
 
-        env.render()
-        time.sleep(.1)
+        # env.render()
+        # time.sleep(.1)
         obs = env.get_observation()
         a = agent.select_action(obs)
 
@@ -63,6 +66,7 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
 
             reward_arr.append(reward_sum)
             avg_reward.append(np.mean(reward_arr[-40:]))
+            timestep_arr.append(time_step)
 
             done = 1
             agent.finish_episode()
@@ -75,22 +79,22 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
 
             env_flag = 0
 
-            if is_final_env:
+            if not is_final_env:
                 env_flag = check_training_done_callback(reward_arr, done_arr)
 
             # quit after some number of episodes
-            if episode > 120000 or env_flag == 1:
+            if episode > 5 or env_flag == 1:
                 agent.save_model(0, 0, index_env)
-                # total_episodes_arr.append(episode)
+                episode_arr.append(episode)
                 break
 
-    return reward_arr, avg_reward, time_step, index_env
+    return reward_arr, avg_reward, timestep_arr, episode_arr, index_env
 
 
 def main(args):
     random.seed(args.seed)
     envs = get_envs()
-    results = []
+    results = {'reward':[], 'avg_reward':[],'timesteps':[],'episodes_per_task':[]}
     agent = ActorCriticPolicy(args.num_actions,
                               args.input_size,
                               args.hidden_size,
@@ -110,9 +114,25 @@ def main(args):
             is_final_env = 1
 
         result = train(args, env, agent, index_env, is_final_env)
-        results.append(result)
+        results['reward'].extend(result[0])
+        results['avg_reward'].extend(result[1])
+        results['timesteps'].extend(result[2])
+        results['episodes_per_task'].extend(result[3])
+        print('results:', results)
 
-    # TODO write and save
+    log_dir = 'logs_' + str(args.seed) 
+    os.makedirs(log_dir, exist_ok = True)
+    path_to_save_total_reward = log_dir + os.sep + 'randomseed_' + str(args.seed) + '_reward_.npz'
+    np.savez_compressed(path_to_save_total_reward, curriculum_reward = np.asarray(results['reward']))
+
+    path_to_save_avg_reward = log_dir + os.sep + 'randomseed_' + str(args.seed) + '_avg_reward_.npz'
+    np.savez_compressed(path_to_save_avg_reward, curriculum_avg_reward = np.asarray(results['avg_reward']))
+
+    path_to_save_timesteps = log_dir + os.sep + 'randomseed_' + str(args.seed) + '_timesteps_.npz'
+    np.savez_compressed(path_to_save_timesteps, curriculum_reward = np.asarray(results['timesteps']))
+
+    path_to_save_episodes = log_dir + os.sep + 'randomseed_' + str(args.seed) + '_episodes_.npz'
+    np.savez_compressed(path_to_save_episodes, curriculum_reward = np.asarray(results['episodes_per_task']))
 
 
 if __name__ == '__main__':
