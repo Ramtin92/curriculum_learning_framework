@@ -8,7 +8,7 @@ class Args:
         self.parser = argparse.ArgumentParser()
 
         # training
-        self.parser.add_argument('--time_limit', type=int, default=10, metavar='N',
+        self.parser.add_argument('--time_limit', type=int, default=12, metavar='N',
                             help='original t_imit in test_curr')
         # TODO:
         # environment

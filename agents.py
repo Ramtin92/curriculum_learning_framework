@@ -8,9 +8,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 import random
+import os
 from torch.nn import init
 
 eps = np.finfo(np.float32).eps.item()
+
 
 
 class ActorCriticPolicy(nn.Module):
@@ -28,7 +30,6 @@ class ActorCriticPolicy(nn.Module):
         self.decay_rate = decay_rate
         self.learning_rate = learning_rate
         self.epsilon = epsilon
-
 
         self.affine = nn.Linear(self.input_size, self.hidden_layer_size)
 
@@ -51,7 +52,6 @@ class ActorCriticPolicy(nn.Module):
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate,
                                           weight_decay=self.decay_rate)
-
 
     def reinit(self): # critic should be saved. actor is random
         for m in self.action_head.modules():
@@ -118,7 +118,8 @@ class ActorCriticPolicy(nn.Module):
             returns.insert(0, the_reward)
 
         returns = torch.tensor(returns)
-        returns = (returns - returns.mean()) / (returns.std() + eps)
+        if returns.size()[0] != 1:
+            returns = (returns - returns.mean()) / (returns.std() + eps)
 
         for (log_prob, value), the_reward in zip(saved_actions, returns):
             advantage = the_reward - value.item()
@@ -135,8 +136,14 @@ class ActorCriticPolicy(nn.Module):
         # sum up all the values of policy_losses and value_losses
         loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
 
+
         # perform back propagation
         loss.backward()
+
+        #clip the gradient to avoid NaN
+        # cliping_value= 1
+        # torch.nn.utils.clip_grad_norm_(self.parameters(), cliping_value)
+
         self.optimizer.step()
 
         # reset rewards and action buffer
@@ -145,6 +152,7 @@ class ActorCriticPolicy(nn.Module):
 
 
     def load_model(self, curriculum_no, beam_no, env_no):
+        directory = "weights/"
         experiment_file_name = '_c' + str(curriculum_no) + '_b' + str(beam_no) + '_e' + str(env_no)
         """
         # path_to_load = self.log_dir + os.sep + self.env_id + experiment_file_name + '.npz'
@@ -152,17 +160,22 @@ class ActorCriticPolicy(nn.Module):
         # self._model['W1'] = data['layer1']
         # self._model['W2'] = data['layer2'] 
         """
-        self.load_state_dict(torch.load(experiment_file_name))
+        self.load_state_dict(torch.load(directory + experiment_file_name))
 
 
     def save_model(self, curriculum_no, beam_no, env_no):
+        directory = "weights/"
         experiment_file_name = '_c' + str(curriculum_no) + '_b' + str(beam_no) + '_e' + str(env_no)
+
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         """
         # path_to_save = self.log_dir + os.sep + self.env_id + experiment_file_name + '.npz'
         # np.savez(path_to_save, layer1=self._model['W1'], layer2=self._model['W2'])
         # print("saved to: ", path_to_save)
         """
-        torch.save(self.state_dict(), experiment_file_name)
+        torch.save(self.state_dict(), directory + experiment_file_name)
 
     def reset(self):
         # self.optimizer.zero_grad()

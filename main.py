@@ -39,7 +39,6 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
     timestep_arr = []
     episode_arr = []
     while True:
-
         # env.render()
         # time.sleep(.1)
         obs = env.get_observation()
@@ -83,7 +82,7 @@ def train(args, env, agent, index_env, is_final_env):  # fill in more args if it
                 env_flag = check_training_done_callback(reward_arr, done_arr)
 
             # quit after some number of episodes
-            if episode > 5 or env_flag == 1:
+            if episode > 12000 or env_flag == 1:
                 agent.save_model(0, 0, index_env)
                 episode_arr.append(episode)
                 break
@@ -121,18 +120,18 @@ def main(args):
         print('results:', results)
 
     log_dir = 'logs_' + str(args.seed) 
-    os.makedirs(log_dir, exist_ok = True)
-    path_to_save_total_reward = log_dir + os.sep + 'randomseed_' + str(args.seed) + '_reward_.npz'
-    np.savez_compressed(path_to_save_total_reward, curriculum_reward = np.asarray(results['reward']))
+    os.makedirs(log_dir, exist_ok=True)
+    path_to_save_total_reward = log_dir + os.sep + "randomseed_" + str(args.seed) + "_reward_.npz"
+    np.savez_compressed(path_to_save_total_reward, curriculum_reward = np.asarray(results["reward"]))
 
-    path_to_save_avg_reward = log_dir + os.sep + 'randomseed_' + str(args.seed) + '_avg_reward_.npz'
-    np.savez_compressed(path_to_save_avg_reward, curriculum_avg_reward = np.asarray(results['avg_reward']))
+    path_to_save_avg_reward = log_dir + os.sep + "randomseed_" + str(args.seed) + "_avg_reward_.npz"
+    np.savez_compressed(path_to_save_avg_reward, curriculum_avg_reward = np.asarray(results["avg_reward"]))
 
-    path_to_save_timesteps = log_dir + os.sep + 'randomseed_' + str(args.seed) + '_timesteps_.npz'
+    path_to_save_timesteps = log_dir + os.sep + "randomseed_" + str(args.seed) + "_timesteps_.npz"
     np.savez_compressed(path_to_save_timesteps, curriculum_reward = np.asarray(results['timesteps']))
 
-    path_to_save_episodes = log_dir + os.sep + 'randomseed_' + str(args.seed) + '_episodes_.npz'
-    np.savez_compressed(path_to_save_episodes, curriculum_reward = np.asarray(results['episodes_per_task']))
+    path_to_save_episodes = log_dir + os.sep + "randomseed_" + str(args.seed) + "_episodes_.npz"
+    np.savez_compressed(path_to_save_episodes, curriculum_reward = np.asarray(results["episodes_per_task"]))
 
 
 if __name__ == '__main__':
