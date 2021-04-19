@@ -8,15 +8,17 @@ class Args:
         self.parser = argparse.ArgumentParser()
 
         # training
-        self.parser.add_argument('--time_limit', type=int, default=12, metavar='N',
+        self.parser.add_argument('--time_limit', type=int, default=100, metavar='N',
                             help='original t_imit in test_curr')
+        self.parser.add_argument('--episodes_per_task', type=int, default=120000, help='episodes per task')
+
         # TODO:
         # environment
         # there are too many arguments in env, I put them in enviroments.py instead
 
         # agent
-        self.parser.add_argument('--num_actions', type=int, default=6, help='num_actions')
-        self.parser.add_argument('--input_size', type=int, default=68, help='input_size')
+        self.parser.add_argument('--num_actions', type=int, default=5, help='num_actions')
+        self.parser.add_argument('--input_size', type=int, default=37, help='input_size')
         self.parser.add_argument('--hidden_size', type=int, default=16, help='hidden_size')
         self.parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning_rate')
         self.parser.add_argument('--gamma', type=float, default=0.995, help='discount factor (default: 0.995)')

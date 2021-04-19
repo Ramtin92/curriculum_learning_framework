@@ -79,6 +79,13 @@ class ActorCriticPolicy(nn.Module):
         # 2. the value from state s_t
         return action_prob, state_values
 
+    def return_critic_value(self, state):
+        state = torch.from_numpy(state).float()
+        _, state_value = self.forward(state)
+        state_value = state_value.detach().cpu().numpy()
+        # print(state_value)
+        return state_value
+
     def select_action(self, state):
         state = torch.from_numpy(state).float()
         probs, state_value = self.forward(state)
@@ -118,8 +125,8 @@ class ActorCriticPolicy(nn.Module):
             returns.insert(0, the_reward)
 
         returns = torch.tensor(returns)
-        if returns.size()[0] != 1:
-            returns = (returns - returns.mean()) / (returns.std() + eps)
+        # if returns.size()[0] != 1:
+        #     returns = (returns - returns.mean()) / (returns.std() + eps)
 
         for (log_prob, value), the_reward in zip(saved_actions, returns):
             advantage = the_reward - value.item()
